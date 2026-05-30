@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-from deepface import DeepFace
-
 
 class NoFaceDetectedError(ValueError):
     """Raised when DeepFace cannot detect a face in the image."""
@@ -35,6 +33,8 @@ def analyze_emotion(image_path: str | Path) -> dict[str, str | int]:
 
     if not path.is_file():
         raise FileNotFoundError(f"Image not found: {path}")
+
+    from deepface import DeepFace
 
     try:
         analysis = DeepFace.analyze(
