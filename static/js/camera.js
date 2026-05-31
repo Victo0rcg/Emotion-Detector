@@ -4,56 +4,178 @@
     const video = document.getElementById("camera-preview");
     const canvas = document.getElementById("capture-canvas");
     const captureBtn = document.getElementById("capture-btn");
-    const uploadBtn = document.getElementById("upload-btn");
-    const analyzeBtn = document.getElementById("analyze-btn");
-    const capturedSection = document.getElementById("captured-section");
     const statusEl = document.getElementById("camera-status");
 
     const resultEmpty = document.getElementById("result-empty");
+    const resultLoading = document.getElementById("result-loading");
     const resultSuccess = document.getElementById("result-success");
     const resultError = document.getElementById("result-error");
-    const emotionBadge = document.getElementById("emotion-badge");
+    const resultErrorMessage = document.getElementById("result-error-message");
+    const resultEmotionCard = document.getElementById("result-emotion-card");
+    const emotionIcon = document.getElementById("emotion-icon");
     const emotionLabel = document.getElementById("emotion-label");
+    const emotionSummary = document.getElementById("emotion-summary");
     const emotionConfidence = document.getElementById("emotion-confidence");
     const confidenceBar = document.getElementById("confidence-bar");
+    const confidenceHint = document.getElementById("confidence-hint");
+
+    const EMOTION_PRESENTATION = {
+        angry: {
+            label: "Enojado",
+            summary: "Señales fuertes de enojo o frustración.",
+            icon: "😠",
+            tone: "angry",
+        },
+        disgust: {
+            label: "Asco",
+            summary: "La expresión sugiere asco o desagrado.",
+            icon: "🤢",
+            tone: "disgust",
+        },
+        fear: {
+            label: "Miedo",
+            summary: "La expresión sugiere miedo o ansiedad.",
+            icon: "😨",
+            tone: "fear",
+        },
+        happy: {
+            label: "Feliz",
+            summary: "Pareces feliz y positivo.",
+            icon: "😊",
+            tone: "happy",
+        },
+        sad: {
+            label: "Triste",
+            summary: "La expresión sugiere tristeza o bajo ánimo.",
+            icon: "😢",
+            tone: "sad",
+        },
+        surprise: {
+            label: "Sorprendido",
+            summary: "La expresión sugiere sorpresa o asombro.",
+            icon: "😲",
+            tone: "surprise",
+        },
+        neutral: {
+            label: "Neutral",
+            summary: "Expresión calmada y equilibrada, sin emoción marcada.",
+            icon: "😐",
+            tone: "neutral",
+        },
+    };
+
+    const FRIENDLY_ERRORS = {
+        "No se detectó ningún rostro en la imagen.":
+            "No encontramos un rostro. Mira a la cámara, mejora la iluminación e inténtalo de nuevo.",
+        "No se proporcionó ningún nombre de archivo.":
+            "Algo salió mal al preparar tu foto. Captura de nuevo e inténtalo otra vez.",
+        "Imagen no encontrada o nombre de archivo no válido.":
+            "No se encontró tu foto. Captura de nuevo e inténtalo otra vez.",
+        "Imagen no encontrada.":
+            "No se encontró tu foto. Captura de nuevo e inténtalo otra vez.",
+        "Error al analizar la emoción.":
+            "El análisis falló inesperadamente. Espera un momento e inténtalo de nuevo.",
+        "Error al subir la imagen.":
+            "Error al subir la imagen. Comprueba tu conexión e inténtalo de nuevo.",
+        "Error en el análisis.":
+            "Error en el análisis. Por favor, inténtalo de nuevo.",
+    };
 
     let stream = null;
-    let hasCapturedImage = false;
-    let lastUploadedFilename = null;
+    let isProcessing = false;
 
     function setStatus(message) {
         statusEl.textContent = message;
     }
 
-    function formatEmotion(emotion) {
-        return emotion.charAt(0).toUpperCase() + emotion.slice(1);
+    function parseResponseJson(response) {
+        return response.text().then(function (text) {
+            if (!text) {
+                return {};
+            }
+            try {
+                return JSON.parse(text);
+            } catch (error) {
+                if (response.status === 413) {
+                    throw new Error("La imagen es demasiado grande.");
+                }
+                throw new Error("Error en el análisis.");
+            }
+        });
     }
 
-    function clearResult() {
-        resultError.classList.add("d-none");
-        resultError.textContent = "";
+    function getEmotionPresentation(emotion) {
+        const key = (emotion || "").toLowerCase();
+        if (EMOTION_PRESENTATION[key]) {
+            return EMOTION_PRESENTATION[key];
+        }
+        const fallbackLabel =
+            key.charAt(0).toUpperCase() + key.slice(1) || "Desconocida";
+        return {
+            label: fallbackLabel,
+            summary: "Emoción dominante detectada por el modelo.",
+            icon: "🙂",
+            tone: "neutral",
+        };
+    }
+
+    function getFriendlyError(message) {
+        return FRIENDLY_ERRORS[message] || message || "Algo salió mal. Por favor, inténtalo de nuevo.";
+    }
+
+    function getConfidenceHint(confidence) {
+        if (confidence >= 80) {
+            return "Alta confianza: el modelo está bastante seguro de este resultado.";
+        }
+        if (confidence >= 50) {
+            return "Confianza moderada: la iluminación o el ángulo pueden afectar la precisión.";
+        }
+        return "Baja confianza: prueba con una foto más clara y de frente.";
+    }
+
+    function hideAllResultStates() {
+        resultEmpty.classList.add("d-none");
+        resultLoading.classList.add("d-none");
         resultSuccess.classList.add("d-none");
+        resultError.classList.add("d-none");
+    }
+
+    function showResultEmpty() {
+        hideAllResultStates();
+        resultErrorMessage.textContent = "";
         resultEmpty.classList.remove("d-none");
     }
 
-    function showResult(emotion, confidence) {
-        resultError.classList.add("d-none");
-        resultEmpty.classList.add("d-none");
-        resultSuccess.classList.remove("d-none");
+    function showResultLoading() {
+        hideAllResultStates();
+        resultLoading.classList.remove("d-none");
+    }
 
-        const label = formatEmotion(emotion);
-        emotionBadge.textContent = label;
-        emotionLabel.textContent = label;
-        emotionConfidence.textContent = String(confidence);
-        confidenceBar.style.width = confidence + "%";
-        confidenceBar.setAttribute("aria-valuenow", String(confidence));
-        confidenceBar.textContent = confidence + "%";
+    function showResult(emotion, confidence) {
+        hideAllResultStates();
+
+        const presentation = getEmotionPresentation(emotion);
+        const safeConfidence = Math.max(0, Math.min(100, Number(confidence) || 0));
+
+        resultEmotionCard.className =
+            "card result-emotion-card border-2 shadow-sm tone-" + presentation.tone;
+        emotionIcon.textContent = presentation.icon;
+        emotionLabel.textContent = presentation.label;
+        emotionSummary.textContent = presentation.summary;
+        emotionConfidence.textContent = String(Math.round(safeConfidence));
+        confidenceBar.style.width = safeConfidence + "%";
+        confidenceBar.setAttribute("aria-valuenow", String(Math.round(safeConfidence)));
+        confidenceBar.textContent = Math.round(safeConfidence) + "%";
+        confidenceBar.className =
+            "progress-bar progress-bar-striped tone-bar-" + presentation.tone;
+        confidenceHint.textContent = getConfidenceHint(safeConfidence);
+
+        resultSuccess.classList.remove("d-none");
     }
 
     function showResultError(message) {
-        resultEmpty.classList.add("d-none");
-        resultSuccess.classList.add("d-none");
-        resultError.textContent = message;
+        hideAllResultStates();
+        resultErrorMessage.textContent = getFriendlyError(message);
         resultError.classList.remove("d-none");
     }
 
@@ -71,14 +193,17 @@
 
     async function startCamera() {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            setStatus("Camera is not supported in this browser.");
+            setStatus("Cámara no compatible con este navegador.");
             return;
         }
 
         if (!window.isSecureContext) {
-            setStatus("Camera requires a secure connection (HTTPS or localhost).");
+            setStatus("La cámara requiere una conexión segura (HTTPS o localhost).");
             return;
         }
+
+        stopCamera();
+        captureBtn.disabled = true;
 
         try {
             stream = await navigator.mediaDevices.getUserMedia({
@@ -108,19 +233,18 @@
             captureBtn.disabled = true;
 
             if (error.name === "NotAllowedError") {
-                setStatus("Camera permission denied. Allow access and reload.");
+                setStatus("Permiso de cámara denegado. Permite el acceso y recarga la página.");
             } else if (error.name === "NotFoundError") {
-                setStatus("No camera found on this device.");
+                setStatus("No se encontró ninguna cámara en este dispositivo.");
             } else {
-                setStatus("Could not start the camera. Try again.");
+                setStatus("No se pudo iniciar la cámara. Inténtalo de nuevo.");
             }
         }
     }
 
-    function capturePhoto() {
+    function captureFrameToCanvas() {
         if (!video.videoWidth || !video.videoHeight) {
-            setStatus("Camera is not ready yet. Wait a moment and try again.");
-            return;
+            throw new Error("La cámara aún no está lista. Espera un momento e inténtalo de nuevo.");
         }
 
         canvas.width = video.videoWidth;
@@ -128,14 +252,6 @@
 
         const context = canvas.getContext("2d");
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        capturedSection.hidden = false;
-        hasCapturedImage = true;
-        lastUploadedFilename = null;
-        uploadBtn.disabled = false;
-        analyzeBtn.disabled = false;
-        clearResult();
-        setStatus("Photo captured. Tap Upload or Analyze.");
     }
 
     function canvasToBlob() {
@@ -143,7 +259,7 @@
             canvas.toBlob(
                 function (blob) {
                     if (!blob) {
-                        reject(new Error("Could not prepare the image for upload."));
+                        reject(new Error("No se pudo preparar la imagen para subir."));
                         return;
                     }
                     resolve(blob);
@@ -163,9 +279,9 @@
                 method: "POST",
                 body: formData,
             }).then(function (response) {
-                return response.json().then(function (data) {
+                return parseResponseJson(response).then(function (data) {
                     if (!response.ok || !data.success) {
-                        throw new Error(data.error || "Upload failed.");
+                        throw new Error(data.error || "Error al subir la imagen.");
                     }
                     return data.filename;
                 });
@@ -179,76 +295,59 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ filename: filename }),
         }).then(function (response) {
-            return response.json().then(function (data) {
+            return parseResponseJson(response).then(function (data) {
                 if (!response.ok) {
-                    throw new Error(data.error || "Analysis failed.");
+                    throw new Error(data.error || "Error en el análisis.");
                 }
                 return data;
             });
         });
     }
 
-    function uploadPhoto() {
-        if (!hasCapturedImage || canvas.width === 0 || canvas.height === 0) {
-            setStatus("Capture a photo before uploading.");
+    function captureAndAnalyze() {
+        if (isProcessing) {
             return;
         }
 
-        uploadBtn.disabled = true;
-        setStatus("Uploading...");
+        try {
+            captureFrameToCanvas();
+        } catch (error) {
+            setStatus(error.message);
+            return;
+        }
+
+        isProcessing = true;
+        captureBtn.disabled = true;
+        showResultLoading();
+        setStatus("Analizando...");
 
         uploadImage()
             .then(function (filename) {
-                lastUploadedFilename = filename;
-                setStatus("Upload successful. Ready to analyze.");
-            })
-            .catch(function (error) {
-                setStatus(error.message);
-            })
-            .finally(function () {
-                uploadBtn.disabled = false;
-            });
-    }
-
-    function analyzePhoto() {
-        if (!hasCapturedImage || canvas.width === 0 || canvas.height === 0) {
-            showResultError("Capture a photo before analyzing.");
-            return;
-        }
-
-        analyzeBtn.disabled = true;
-        uploadBtn.disabled = true;
-        clearResult();
-        setStatus("Analyzing...");
-
-        const uploadPromise = lastUploadedFilename
-            ? Promise.resolve(lastUploadedFilename)
-            : uploadImage();
-
-        uploadPromise
-            .then(function (filename) {
-                lastUploadedFilename = filename;
                 return requestAnalysis(filename);
             })
             .then(function (data) {
                 showResult(data.emotion, data.confidence);
-                setStatus("Analysis complete.");
+                setStatus("Análisis completado.");
             })
             .catch(function (error) {
                 showResultError(error.message);
                 setStatus("");
             })
             .finally(function () {
-                analyzeBtn.disabled = false;
-                uploadBtn.disabled = false;
+                isProcessing = false;
+                captureBtn.disabled = false;
             });
     }
 
-    captureBtn.addEventListener("click", capturePhoto);
-    uploadBtn.addEventListener("click", uploadPhoto);
-    analyzeBtn.addEventListener("click", analyzePhoto);
+    captureBtn.addEventListener("click", captureAndAnalyze);
 
     window.addEventListener("pagehide", stopCamera);
+
+    window.addEventListener("pageshow", function (event) {
+        if (event.persisted) {
+            startCamera();
+        }
+    });
 
     document.addEventListener("DOMContentLoaded", startCamera);
 })();

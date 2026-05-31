@@ -1,633 +1,387 @@
 # EmotionCam Web
-## Final Project – Artificial Intelligence Applied to Mobile Applications
 
-EmotionCam Web is a mobile-first web application that detects facial emotions from a photo captured with the device camera. It is built with Flask and uses a pre-trained deep learning model for emotion recognition, so the project stays focused on the Artificial Intelligence component while remaining feasible within a short delivery window.
+**Real-time facial emotion recognition powered by DeepFace and Flask**
 
-The application is optimized for iPhone Safari and other mobile browsers. Desktop support is provided through the same responsive interface, without creating a separate desktop version.
-
----
-
-# 1. Project Goal
-
-Develop a functional AI-powered web application that:
-
-- captures an image from the user’s camera,
-- detects the dominant facial emotion,
-- displays the result immediately,
-- stores the analysis in a local database,
-- shows history and basic statistics,
-- can be deployed online if time allows.
-
-The main objective is not to train a custom model, but to integrate a reliable pre-trained emotion recognition model into a working application.
+EmotionCam Web is a mobile-first web application that detects human emotions from live camera input. Users capture a photo with a single tap, and the system automatically analyzes facial expressions using deep learning, displays the result with a confidence score, and persists each analysis for later review.
 
 ---
 
-# 2. AI Focus
+## Overview
 
-This project is centered on computer vision and deep learning.
+Understanding human emotions from facial expressions is a fundamental problem in artificial intelligence, with applications in human–computer interaction, accessibility, education, and user experience research. Manual interpretation of emotions is subjective and does not scale; automated systems can provide consistent, data-driven insights in real time.
 
-## AI Tasks Used in the System
-
-- Facial detection
-- Emotion classification
-- Pre-trained CNN inference
-- Result interpretation and storage
-
-## Emotions Detected
-
-The system is expected to classify common facial emotions such as:
-
-- Happy
-- Sad
-- Angry
-- Neutral
-- Surprise
-- Fear
-- Disgust
-
-The exact set depends on the pre-trained model used by the selected AI library.
-
-## AI Implementation Strategy
-
-To keep development fast and reliable, the project uses a pre-trained emotion recognition model instead of building and training a custom neural network.
-
-This approach is appropriate because:
-
-- it reduces implementation time,
-- it avoids the need for datasets,
-- it avoids training complexity,
-- it still demonstrates real AI usage,
-- it is more stable for a live demo.
+EmotionCam Web addresses this challenge by delivering a practical, browser-based emotion recognition tool. The application combines computer vision, deep learning, and a lightweight web stack to let users interact with an AI model through their device camera—without installing native software. The interface is designed for mobile devices and is fully localized in Spanish, making it suitable for demonstrations, academic evaluation, and portfolio presentation.
 
 ---
 
-# 3. Technology Stack
+## Features
 
-## Backend
-
-- Python 3.11+
-- Flask
-
-## AI / Computer Vision
-
-- DeepFace
-- OpenCV
-- TensorFlow
-
-## Frontend
-
-- HTML5
-- CSS3
-- JavaScript
-- Bootstrap 5
-
-## Storage
-
-- SQLite
-
-## Optional Deployment
-
-- Render
-- Railway
+- **Live camera preview** with front-facing camera support
+- **One-tap capture and analysis** — capture, upload, and analyze in a single action
+- **DeepFace emotion recognition** with dominant emotion detection
+- **Confidence score visualization** with progress bar and contextual hints
+- **Spanish-language interface** (UI, errors, and result labels)
+- **Emotion history page** — chronological log of past analyses
+- **Statistics page** — emotion distribution with counts and percentages
+- **SQLite persistence** for analysis records
+- **Mobile-first responsive design** optimized for iPhone Safari
+- **Secure file upload handling** with validation and size limits
+- **Graceful error handling** for missing faces, camera issues, and network failures
 
 ---
 
-# 4. Application Scope
+## Artificial Intelligence Component
 
-## Included in the MVP
+### DeepFace
 
-- Mobile-friendly web interface
-- Camera access from browser
-- Photo capture
-- Emotion detection using AI
-- Emotion result display
-- Confidence display
-- History storage in SQLite
-- History page
-- Statistics page
+[DeepFace](https://github.com/serengil/deepface) is an open-source Python framework for facial analysis. It wraps pre-trained deep learning models (built on TensorFlow/Keras) that perform face detection and attribute inference. In this project, DeepFace is used exclusively for **emotion recognition**.
 
-## Optional Extra Feature
+### Emotion Recognition
 
-- Public deployment with a shareable URL
+When an image is submitted for analysis, DeepFace detects faces in the photograph and evaluates each face against seven emotion categories:
 
-## Not Included
+| Emotion   | Label (ES)    |
+|-----------|---------------|
+| Angry     | Enojado       |
+| Disgust   | Asco          |
+| Fear      | Miedo         |
+| Happy     | Feliz         |
+| Sad       | Triste        |
+| Surprise  | Sorprendido   |
+| Neutral   | Neutral       |
 
-- Custom CNN training
-- User accounts
-- Authentication
-- Cloud database
-- Multi-user analytics
-- Real-time video processing on every frame
-- Separate desktop design
+The model returns a probability distribution across all seven classes for each detected face.
+
+### Dominant Emotion Detection
+
+The **dominant emotion** is the class with the highest predicted probability in DeepFace's output. The application extracts this value via `dominant_emotion` and normalizes it to a lowercase label before returning it to the client and storing it in the database.
+
+If no face is detected in the image (`enforce_detection=True`), the service raises a dedicated error and the user receives a clear message to adjust lighting or camera angle.
+
+### Confidence Score Generation
+
+The confidence score corresponds to the model's predicted probability for the dominant emotion class, expressed as an integer percentage (0–100). The value is read directly from DeepFace's emotion score dictionary and clamped to a maximum of 100 to prevent display anomalies from floating-point rounding.
 
 ---
 
-# 5. System Architecture
+## System Architecture
 
-```text
-Mobile Browser / Desktop Browser
-           ↓
-        Flask App
-           ↓
-   Emotion Analysis Service
-           ↓
-      SQLite Database
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Browser (Client)                        │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
+│  │ Bootstrap UI │  │  camera.js   │  │ MediaDevices API │  │
+│  └──────┬───────┘  └──────┬───────┘  └────────┬─────────┘  │
+└─────────┼─────────────────┼───────────────────┼──────────────┘
+          │                 │                   │
+          │    HTTP (HTML)    │   REST (JSON)     │  getUserMedia
+          ▼                 ▼                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     Flask Backend (app.py)                  │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────────┐  │
+│  │  Routes  │  │  Upload  │  │ Analyze  │  │  Templates │  │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────────────┘  │
+│       │             │             │                         │
+│       │             ▼             ▼                         │
+│       │      ┌────────────┐  ┌─────────────────┐           │
+│       │      │  uploads/  │  │ emotion_service │           │
+│       │      └────────────┘  └────────┬────────┘           │
+│       │                               │                     │
+│       ▼                               ▼                     │
+│  ┌─────────────┐              ┌──────────────┐             │
+│  │  database/  │              │   DeepFace   │             │
+│  │   (SQLite)  │              │  (TensorFlow)│             │
+│  └─────────────┘              └──────────────┘             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## Architecture Explanation
+### Flask Backend
 
-### Browser Layer
+The backend is built with **Flask 3.x** and exposes both server-rendered pages and JSON API endpoints. It handles image uploads, orchestrates emotion analysis, persists results, and serves the history and statistics views.
 
-The user opens the application in Safari, Chrome, or another modern browser.
+| Route      | Method | Description                          |
+|------------|--------|--------------------------------------|
+| `/`        | GET    | Main camera and analysis page        |
+| `/history` | GET    | Emotion analysis history             |
+| `/stats`   | GET    | Emotion distribution statistics      |
+| `/upload`  | POST   | Receive and store captured image     |
+| `/analyze` | POST   | Run DeepFace analysis on uploaded image |
 
-### Flask Layer
+### Bootstrap Frontend
 
-Flask handles routes, uploads, rendering, and result delivery.
+The user interface uses **Bootstrap 5.3** (CDN) with custom CSS for a clean, mobile-first layout. The main page (`index.html`) provides the camera preview, capture button, and result panel. History and statistics pages share a consistent navigation bar and container width (max 480 px).
 
-### AI Layer
+Client-side logic in `camera.js` manages camera access, frame capture via HTML5 Canvas, asynchronous upload/analysis requests, and dynamic result rendering.
 
-The emotion analysis service loads the pre-trained model and returns the dominant emotion.
+### SQLite Database
 
-### Persistence Layer
+Analysis results are stored in a local **SQLite** database (`instance/emotions.db`). The `emotions` table records:
 
-SQLite stores each detected emotion with timestamp and confidence.
+| Column     | Type     | Description                    |
+|------------|----------|--------------------------------|
+| `id`       | INTEGER  | Primary key                    |
+| `timestamp`| DATETIME | UTC timestamp of analysis      |
+| `emotion`  | TEXT     | Dominant emotion label         |
+| `confidence`| REAL    | Confidence score (0–100)       |
+
+### Camera Integration
+
+The browser **MediaDevices API** (`getUserMedia`) accesses the device camera with:
+
+- Front-facing mode (`facingMode: "user"`)
+- `playsinline` and `muted` attributes for iOS Safari compatibility
+- HTTPS requirement enforced via secure context check (satisfied by ngrok or localhost)
+
+Captured frames are drawn to a hidden canvas and exported as JPEG blobs for upload.
+
+### DeepFace Service
+
+The `services/emotion_service.py` module encapsulates all AI logic. It accepts a file path, invokes `DeepFace.analyze()` with `actions=["emotion"]`, extracts the dominant emotion and confidence, and returns a structured JSON-compatible dictionary. Error handling distinguishes file-not-found, no-face-detected, and general analysis failures.
 
 ---
 
-# 6. Project Structure
+## Application Workflow
 
-```text
-emotioncam-web/
-├── app.py
-├── requirements.txt
-├── README.md
-├── Procfile
-├── instance/
-│   └── emotions.db
-├── uploads/
+```
+User
+  │
+  ▼
+Opens application in mobile browser (HTTPS)
+  │
+  ▼
+Camera ──► Live preview starts via getUserMedia
+  │
+  ▼
+Capture ──► User taps "Capturar"
+  │           Frame drawn to hidden canvas
+  │
+  ▼
+Upload ──► JPEG sent to POST /upload
+  │           Saved to uploads/ with UUID filename
+  │
+  ▼
+DeepFace Analysis ──► POST /analyze with filename
+  │                     Face detection + emotion inference
+  │
+  ▼
+Result Display ──► Emotion label, icon, summary,
+  │                 confidence bar shown in Spanish
+  │
+  ▼
+Database Storage ──► Record inserted into SQLite
+                      (emotion, confidence, timestamp)
+```
+
+---
+
+## Technologies Used
+
+| Category            | Technology                        |
+|---------------------|-----------------------------------|
+| Backend framework   | Flask 3.x                         |
+| AI / Deep learning  | DeepFace, TensorFlow 2.x          |
+| Computer vision     | OpenCV (headless)                 |
+| Database            | SQLite 3                          |
+| Frontend framework  | Bootstrap 5.3                     |
+| Client scripting    | Vanilla JavaScript (ES5+)         |
+| Camera API          | MediaDevices / getUserMedia       |
+| Image processing    | HTML5 Canvas                      |
+| Language            | Python 3.12                       |
+| Tunneling (mobile)  | ngrok                             |
+
+---
+
+## Project Structure
+
+```
+Emotion Detector/
+├── app.py                  # Flask application and route definitions
+├── requirements.txt        # Python dependencies
+├── validate_ai.py          # Standalone DeepFace validation script
+├── README.md               # Project documentation
+│
+├── database/
+│   └── db.py               # SQLite initialization and CRUD operations
+│
+├── services/
+│   └── emotion_service.py  # DeepFace emotion analysis service
+│
 ├── templates/
-│   ├── index.html
-│   ├── history.html
-│   └── stats.html
+│   ├── index.html          # Main camera and analysis page
+│   ├── history.html        # Emotion history view
+│   └── stats.html          # Emotion statistics view
+│
 ├── static/
 │   ├── css/
-│   │   └── style.css
+│   │   └── style.css       # Custom mobile-first styles
 │   └── js/
-│       └── camera.js
-├── services/
-│   └── emotion_service.py
-└── database/
-    └── db.py
+│       └── camera.js       # Camera, capture, and API client logic
+│
+├── uploads/                # Stored captured images (gitignored)
+└── instance/
+    └── emotions.db         # SQLite database (gitignored)
 ```
 
 ---
 
-# 7. Functional Requirements
+## Installation
 
-## FR-01 Camera Access
+### Prerequisites
 
-The system must allow the user to open the device camera from the browser.
+- Python 3.10 or higher
+- pip
+- A webcam or mobile device with camera access
+- (Optional) [ngrok](https://ngrok.com/) for mobile testing over HTTPS
 
-## FR-02 Image Capture
+### Steps
 
-The system must allow the user to capture a photo.
+1. **Clone the repository**
 
-## FR-03 Emotion Detection
+   ```bash
+   git clone https://github.com/<your-username>/emotion-detector.git
+   cd emotion-detector
+   ```
 
-The system must analyze the captured image and identify the dominant emotion.
+2. **Create and activate a virtual environment**
 
-## FR-04 Confidence Output
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate        # Linux / macOS
+   .venv\Scripts\activate           # Windows
+   ```
 
-The system must display a confidence value or equivalent probability indicator returned by the model.
+3. **Install dependencies**
 
-## FR-05 Result Display
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-The system must show the detected emotion in the interface.
+   > **Note:** The first run will download DeepFace model weights (~100 MB). Ensure a stable internet connection.
 
-## FR-06 Persistence
+4. **Verify the AI component (optional)**
 
-The system must store each analysis in SQLite.
-
-## FR-07 History
-
-The system must display previous emotion detections.
-
-## FR-08 Statistics
-
-The system must calculate and display the frequency of detected emotions.
-
-## FR-09 Responsive Design
-
-The system must work as a single mobile-first interface that scales correctly on desktop browsers.
-
----
-
-# 8. Non-Functional Requirements
-
-## Usability
-
-The interface must be simple, readable, and suitable for a live demo.
-
-## Compatibility
-
-The application should run correctly on:
-
-- iPhone Safari
-- Android Chrome
-- Desktop browsers through responsive layout
-
-## Performance
-
-Emotion detection should complete in a reasonable time for demonstration purposes.
-
-## Reliability
-
-The system should handle missing faces or invalid uploads gracefully.
-
-## Maintainability
-
-The project should remain simple, modular, and easy to explain.
+   ```bash
+   python validate_ai.py path/to/test_image.jpg
+   ```
 
 ---
 
-# 9. Database Specification
+## Running the Project
 
-## Table: emotions
+Start the Flask development server:
 
-```sql
-CREATE TABLE emotions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp DATETIME NOT NULL,
-    emotion TEXT NOT NULL,
-    confidence REAL
-);
+```bash
+python app.py
 ```
 
-## Stored Data
+The application will be available at:
 
-- ID
-- timestamp
-- detected emotion
-- confidence score
-
----
-
-# 10. API and Route Specification
-
-## GET /
-
-Shows the main application interface.
-
-## POST /analyze
-
-Receives an image, sends it to the emotion model, and returns the result.
-
-## GET /history
-
-Displays stored emotion analysis records.
-
-## GET /stats
-
-Displays the statistics summary of stored emotions.
-
----
-
-# 11. User Interface Specification
-
-## Main Screen
-
-The main screen should include:
-
-- title
-- camera preview or capture section
-- capture button
-- analyze button
-- emotion result
-- confidence value
-- link to history
-- link to statistics
-
-## History Screen
-
-The history screen should show:
-
-- date
-- time
-- detected emotion
-- confidence
-
-## Statistics Screen
-
-The statistics screen should show:
-
-- emotion counts
-- emotion percentages
-- simple visual summary if time allows
-
-## Design Strategy
-
-The interface is intentionally mobile-first.
-
-On desktop, the same interface should appear centered and responsive, without a separate desktop redesign.
-
----
-
-# 12. Development Roadmap in Correct Order
-
-## Step 1 — Validate the AI Model
-
-### Goal
-
-Confirm that the selected AI library can successfully detect emotions.
-
-### Output
-
-A working emotion prediction from a local image file.
-
----
-
-## Step 2 — Create the Flask Skeleton
-
-### Goal
-
-Have a minimal app that serves one page.
-
-### Output
-
-A working local server at:
-
-```text
+```
 http://localhost:5000
 ```
 
----
-
-## Step 3 — Build the Main Interface
-
-### Goal
-
-Show the camera section, buttons, and result area.
-
-### Output
-
-A usable interface that looks correct on a phone screen.
+Open this URL in a desktop browser for local testing. Camera access requires a secure context (HTTPS or localhost).
 
 ---
 
-## Step 4 — Add Camera Capture
+## Mobile Testing with ngrok
 
-### Goal
+Mobile browsers require HTTPS for camera access. Use ngrok to expose the local server securely:
 
-Let the user take a photo from the mobile browser.
+1. **Start the Flask server**
 
-### Output
+   ```bash
+   python app.py
+   ```
 
-A captured image ready to be sent to the backend.
+2. **Start ngrok in a separate terminal**
 
----
+   ```bash
+   ngrok http 5000
+   ```
 
-## Step 5 — Connect Image Upload to Flask
+3. **Open the HTTPS URL** provided by ngrok (e.g., `https://abc123.ngrok-free.app`) on your iPhone or Android device using Safari or Chrome.
 
-### Goal
+4. **Grant camera permission** when prompted.
 
-Transfer the photo from the frontend to the backend.
-
-### Output
-
-The backend receives and saves the uploaded image.
-
----
-
-## Step 6 — Integrate Emotion Detection
-
-### Goal
-
-Analyze the image and extract the dominant emotion.
-
-### Output
-
-A returned emotion label and confidence value.
+5. **Pre-warm the model** by performing one test capture before a live demonstration. The first analysis may take 15–30 seconds while DeepFace loads its models.
 
 ---
 
-## Step 7 — Display the Result in the UI
+## Usage Instructions
 
-### Goal
+1. Open the application in a supported mobile browser (HTTPS required).
+2. Allow camera access when the browser requests permission.
+3. Position your face within the live camera preview.
+4. Tap **Capturar** to capture and analyze your expression.
+5. Wait for the analysis to complete (a loading indicator is shown).
+6. Review the detected **emotion** and **confidence score**.
+7. Navigate to **Historial** to view past analyses.
+8. Navigate to **Estadísticas** to see emotion distribution across all sessions.
 
-Make the AI result visible and understandable to the user.
+### Tips for Best Results
 
-### Output
-
-Emotion and confidence appear on the main page.
-
----
-
-## Step 8 — Add SQLite Persistence
-
-### Goal
-
-Keep a record of all analyses.
-
-### Output
-
-Each result is written into `emotions.db`.
+- Face the camera directly with adequate lighting.
+- Avoid extreme angles or partial face occlusion.
+- Wait for the camera preview to fully load before capturing.
+- If no face is detected, adjust position and try again.
 
 ---
 
-## Step 9 — Build the History Page
+## Screenshots
 
-### Goal
+> Replace the placeholders below with actual screenshots before publication.
 
-Let the user see past results.
+### Main Page — Camera and Analysis
 
-### Output
+![Main page — live camera preview and capture button](docs/screenshots/main-page.png)
 
-A history page with timestamps and emotions.
+### Emotion Result
 
----
+![Detected emotion with confidence score](docs/screenshots/emotion-result.png)
 
-## Step 10 — Build the Statistics Page
+### History Page
 
-### Goal
+![Chronological list of past emotion analyses](docs/screenshots/history-page.png)
 
-Show the distribution of detected emotions.
+### Statistics Page
 
-### Output
-
-A statistics view with counts or percentages.
+![Emotion distribution with counts and percentages](docs/screenshots/stats-page.png)
 
 ---
 
-## Step 11 — Polish the Interface
+## Future Improvements
 
-### Goal
-
-Make the app presentable for evaluation.
-
-### Output
-
-A clean and stable mobile-first interface.
-
----
-
-## Step 12 — Test and Deploy
-
-### Goal
-
-Prepare the final version for live demonstration.
-
-### Output
-
-A public URL or a stable local deployment.
+- **Real-time video analysis** — continuous emotion detection without manual capture
+- **Multi-face support** — analyze multiple faces in a single frame
+- **User authentication** — personal history and session management
+- **Model selection** — allow switching between DeepFace backend models
+- **Deployment pipeline** — production hosting on Render, Railway, or similar
+- **Local timezone display** — convert UTC timestamps to the user's locale
+- **Image cleanup policy** — automatic removal of old uploads to manage disk usage
+- **Progress indicator** — granular feedback during long model loading
+- **Internationalization** — support for additional languages beyond Spanish
+- **Unit and integration tests** — automated test coverage for API and service layers
 
 ---
 
-# 13. Development Strategy
+## Academic Context
 
-## Recommended Implementation Style
+This project was developed as part of an **Artificial Intelligence course** at university level. It demonstrates the practical application of deep learning concepts—specifically computer vision and facial expression analysis—in a full-stack web application.
 
-Use a Minimum Viable Product (MVP) approach:
+The project covers key AI and software engineering topics including:
 
-- build the smallest working version first,
-- test constantly,
-- avoid unnecessary features,
-- prioritize reliability over complexity.
+- Integration of pre-trained deep learning models via DeepFace
+- Face detection and multi-class emotion classification
+- Confidence scoring and result interpretation
+- Building a user-facing AI system with appropriate error handling
+- Persisting and visualizing AI inference results
+- Mobile-first design for real-world AI interaction
 
-## Recommended Modeling Strategy
-
-Use a pre-trained model.
-
-Do not train a custom neural network.
-
-## Recommended Interface Strategy
-
-Use a single-screen mobile interface.
-
-Do not create separate desktop screens.
-
-## Recommended Deployment Strategy
-
-Deploy only after the local version is stable.
+EmotionCam Web serves as both a functional prototype and a portfolio piece showcasing the ability to connect AI research tools with accessible, production-oriented software design.
 
 ---
 
-# 14. Testing Plan
+## License
 
-## Test 1 — Server Startup
-
-The Flask server must start without errors.
-
-## Test 2 — Camera Access
-
-The browser must request and receive camera permission.
-
-## Test 3 — Image Capture
-
-The captured image must be sent to Flask correctly.
-
-## Test 4 — Emotion Detection
-
-The AI module must return a valid emotion.
-
-## Test 5 — Database Storage
-
-The result must be saved in SQLite.
-
-## Test 6 — History Display
-
-The history page must show saved records.
-
-## Test 7 — Statistics Display
-
-The statistics page must summarize the stored data.
-
-## Test 8 — Mobile Usability
-
-The application must remain readable and functional on a phone screen.
-
----
-
-# 15. Deployment Plan
-
-## Option A — Local Demo
-
-Run Flask locally and open the application from the iPhone using the laptop's network IP.
-
-## Option B — Public Deployment
-
-Deploy the app on a hosting platform such as Render.
-
-## Deployment Goal
-
-Make the application accessible through a shareable URL.
-
-Example:
-
-```text
-https://emotioncam.onrender.com
-```
-
-Deployment is optional but strongly recommended as an extra feature if time permits.
-
----
-
-# 16. Expected Demo Flow
-
-1. Open the application on the phone browser.
-2. Allow camera access.
-3. Capture a photo.
-4. Run emotion analysis.
-5. Show the detected emotion.
-6. Open the history page.
-7. Open the statistics page.
-8. Explain the AI model, Flask backend, SQLite storage, and responsive web architecture.
-
----
-
-# 17. Deliverables
-
-## Source Code
-
-Complete project repository.
-
-## Technical Documentation
-
-Must include:
-
-- objectives
-- architecture
-- AI techniques used
-- screenshots
-- implementation details
-- results
-
-## Demonstration Video
-
-A short video showing the application working.
-
-## Final Presentation
-
-Slides summarizing:
-
-- problem
-- solution
-- technologies
-- AI components
-- results
-
----
-
-# 18. Final Notes
-
-This project is intentionally designed to be achievable within a short development window while still satisfying the Artificial Intelligence requirements of the course.
-
-Priority order:
-
-1. Working emotion recognition
-2. Mobile-friendly interface
-3. Reliable storage
-4. History visualization
-5. Statistics visualization
-6. Optional deployment
-
-The final product should be stable, demonstrable, and easy to explain during evaluation.
+This project was created for academic purposes. See the repository for license details.
