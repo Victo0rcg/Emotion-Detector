@@ -133,6 +133,16 @@
         return "Baja confianza: prueba con una foto más clara y de frente.";
     }
 
+    // Normalize UTC timestamp strings for cross-browser compatibility
+    function normalizeUtcString(s) {
+        if (!s) return s;
+        var str = String(s).replace(/\+00:00$/, "Z");
+        if (!/[Zz]$/.test(str) && !/[+-]\d{2}:\d{2}$/.test(str)) {
+            str = str + "Z";
+        }
+        return str;
+    }
+
     function hideAllResultStates() {
         resultEmpty.classList.add("d-none");
         resultLoading.classList.add("d-none");
@@ -290,10 +300,11 @@
     }
 
     function requestAnalysis(filename) {
+        var deviceId = window.getEmotionCamDeviceId();
         return fetch("/analyze", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ filename: filename }),
+            body: JSON.stringify({ filename: filename, device_id: deviceId }),
         }).then(function (response) {
             return parseResponseJson(response).then(function (data) {
                 if (!response.ok) {

@@ -23,7 +23,8 @@ EmotionCam Web addresses this challenge by delivering a practical, browser-based
 - **Spanish-language interface** (UI, errors, and result labels)
 - **Emotion history page** — chronological log of past analyses
 - **Statistics page** — emotion distribution with counts and percentages
-- **SQLite persistence** for analysis records
+- **Google Cloud Firestore persistence** for analysis records
+- **Device-specific history and statistics** via browser-based device identifiers
 - **Mobile-first responsive design** optimized for iPhone Safari
 - **Secure file upload handling** with validation and size limits
 - **Graceful error handling** for missing faces, camera issues, and network failures
@@ -90,7 +91,7 @@ The confidence score corresponds to the model's predicted probability for the do
 │       ▼                               ▼                     │
 │  ┌─────────────┐              ┌──────────────┐             │
 │  │  database/  │              │   DeepFace   │             │
-│  │   (SQLite)  │              │  (TensorFlow)│             │
+│  │ (Firestore) │              │  (TensorFlow)│             │
 │  └─────────────┘              └──────────────┘             │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -113,16 +114,16 @@ The user interface uses **Bootstrap 5.3** (CDN) with custom CSS for a clean, mob
 
 Client-side logic in `camera.js` manages camera access, frame capture via HTML5 Canvas, asynchronous upload/analysis requests, and dynamic result rendering.
 
-### SQLite Database
+### Firestore Database
 
-Analysis results are stored in a local **SQLite** database (`instance/emotions.db`). The `emotions` table records:
+Analysis results are stored in **Google Cloud Firestore** in a collection named `emotions`. Each document contains the following fields:
 
-| Column     | Type     | Description                    |
-|------------|----------|--------------------------------|
-| `id`       | INTEGER  | Primary key                    |
-| `timestamp`| DATETIME | UTC timestamp of analysis      |
-| `emotion`  | TEXT     | Dominant emotion label         |
-| `confidence`| REAL    | Confidence score (0–100)       |
+| Field       | Type       | Description                      |
+|-------------|------------|----------------------------------|
+| `device_id` | string     | Anonymous device UUID            |
+| `timestamp` | timestamp  | UTC timestamp of analysis        |
+| `emotion`   | string     | Dominant emotion label (lowercase)|
+| `confidence`| number     | Confidence score (0–100)         |
 
 ### Camera Integration
 
@@ -168,8 +169,8 @@ Result Display ──► Emotion label, icon, summary,
   │                 confidence bar shown in Spanish
   │
   ▼
-Database Storage ──► Record inserted into SQLite
-                      (emotion, confidence, timestamp)
+Database Storage ──► Record inserted into Firestore
+                      (device_id, emotion, confidence, timestamp)
 ```
 
 ---
@@ -181,7 +182,7 @@ Database Storage ──► Record inserted into SQLite
 | Backend framework   | Flask 3.x                         |
 | AI / Deep learning  | DeepFace, TensorFlow 2.x          |
 | Computer vision     | OpenCV (headless)                 |
-| Database            | SQLite 3                          |
+| Database            | Google Cloud Firestore            |
 | Frontend framework  | Bootstrap 5.3                     |
 | Client scripting    | Vanilla JavaScript (ES5+)         |
 | Camera API          | MediaDevices / getUserMedia       |
@@ -197,11 +198,11 @@ Database Storage ──► Record inserted into SQLite
 Emotion Detector/
 ├── app.py                  # Flask application and route definitions
 ├── requirements.txt        # Python dependencies
-├── validate_ai.py          # Standalone DeepFace validation script
 ├── README.md               # Project documentation
 │
 ├── database/
-│   └── db.py               # SQLite initialization and CRUD operations
+│   ├── db.py               # Persistence compatibility layer
+│   └── firestore_db.py     # Firestore persistence module
 │
 ├── services/
 │   └── emotion_service.py  # DeepFace emotion analysis service
@@ -219,7 +220,7 @@ Emotion Detector/
 │
 ├── uploads/                # Stored captured images (gitignored)
 └── instance/
-    └── emotions.db         # SQLite database (gitignored)
+    └── emotions.db         # Legacy SQLite file path (gitignored; not required for Firestore)
 ```
 
 ---
@@ -258,12 +259,6 @@ Emotion Detector/
 
    > **Note:** The first run will download DeepFace model weights (~100 MB). Ensure a stable internet connection.
 
-4. **Verify the AI component (optional)**
-
-   ```bash
-   python validate_ai.py path/to/test_image.jpg
-   ```
-
 ---
 
 ## Running the Project
@@ -280,7 +275,143 @@ The application will be available at:
 http://localhost:5000
 ```
 
+## Environment Variables
+
+The application expects the following environment variables when using Firestore:
+
+- `GOOGLE_APPLICATION_CREDENTIALS` (recommended for local testing): path to a service account JSON key file.
+- `FIRESTORE_PROJECT_ID` or `GOOGLE_CLOUD_PROJECT`: the GCP project id where Firestore is enabled.
+
+In production (Cloud Run) prefer Workload Identity / Cloud Run service accounts instead of JSON keys.
+
+## Cloud Run Deployment
+
+Deploy the application to Google Cloud Run using Workload Identity for secure, key-free authentication:
+
+### Step 1: Create a service account
+
+```bash
+gcloud iam service-accounts create emotioncam-sa \
+  --display-name "EmotionCam Service Account"
+```
+
+Replace `emotioncam-sa` with your preferred name.
+
+### Step 2: Grant Firestore permissions
+
+```bash
+gcloud projects add-iam-policy-binding PROJECT_ID \
+  --member="serviceAccount:emotioncam-sa@PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/datastore.user"
+```
+
+Replace `PROJECT_ID` with your Google Cloud project ID.
+
+### Step 3: Build and push the Docker image
+
+```bash
+gcloud builds submit --tag IMAGE_URL
+```
+
+Replace `IMAGE_URL` with the full image path, e.g., `gcr.io/PROJECT_ID/emotioncam-app`.
+
+### Step 4: Deploy to Cloud Run
+
+```bash
+gcloud run deploy emotioncam-app \
+  --image IMAGE_URL \
+  --service-account emotioncam-sa@PROJECT_ID.iam.gserviceaccount.com \
+  --set-env-vars GOOGLE_CLOUD_PROJECT=PROJECT_ID \
+  --region us-central1 \
+  --memory 4Gi \
+  --cpu 2 \
+  --timeout 120 \
+  --allow-unauthenticated
+```
+
+Replace `IMAGE_URL` and `PROJECT_ID` with your values.
+
+### Cold-start note
+
+The first request after a Cloud Run instance cold-starts may take 20–40 seconds while TensorFlow loads the DeepFace models. To avoid cold starts in demo scenarios, optionally set `--min-instances 1` at the cost of continuous billing:
+
+```bash
+gcloud run deploy emotioncam-app \
+  --image IMAGE_URL \
+  --service-account emotioncam-sa@PROJECT_ID.iam.gserviceaccount.com \
+  --set-env-vars GOOGLE_CLOUD_PROJECT=PROJECT_ID \
+  --region us-central1 \
+  --memory 4Gi \
+  --cpu 2 \
+  --timeout 120 \
+  --allow-unauthenticated \
+  --min-instances 1
+```
+
+
+## Google Cloud Firestore Setup
+
+1. Enable the **Cloud Firestore** API in your Google Cloud project.
+2. Create a service account with the following IAM roles:
+   - `Cloud Datastore User` or `Cloud Firestore User`
+   - `Cloud Firestore Viewer` (for read-only access if needed)
+   - `Cloud Logging > Logs Writer` (optional, for app logging into GCP)
+3. Generate and download a JSON key file for the service account.
+4. Set the environment variable:
+
+   ```bash
+   export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your-key.json"
+   export FIRESTORE_PROJECT_ID="your-gcp-project-id"
+   ```
+
+   If you use Application Default Credentials or Workload Identity, only `FIRESTORE_PROJECT_ID` may be required.
+
+5. Confirm credentials are available before starting the app:
+
+   ```bash
+   python -c "from google.auth import default; creds, project = default(); print(project)"
+   ```
+
+6. Launch the app:
+
+   ```bash
+   python app.py
+   ```
+
 Open this URL in a desktop browser for local testing. Camera access requires a secure context (HTTPS or localhost).
+
+---
+
+## Security & Privacy
+
+### Device Isolation Model
+
+The application uses an **anonymous per-device isolation model** for history and statistics:
+
+1. On first visit, the browser generates a unique UUID using `crypto.randomUUID()` and stores it in `localStorage` under the key `emotion_device_id`.
+2. This UUID is sent with every emotion analysis request and stored in Firestore as `device_id`.
+3. History and statistics pages are filtered server-side to show only records matching the current device's UUID.
+
+### Limitations
+
+- **Not cryptographically signed**: The device UUID is not signed, encrypted, or validated by the server. Any client can set or guess a different `device_id` value and view another device's history if they know or guess the UUID.
+- **Not suitable for sensitive data**: This model is appropriate for demos, academic projects, and public displays, but not for personally sensitive or regulated data.
+- **No personal data collected**: The application collects only emotion analysis results, timestamps, and device UUIDs; it does not collect IP addresses, browser fingerprints, or other personally identifiable information.
+
+### Recommended use cases
+
+- Educational demonstrations
+- Academic projects
+- Public kiosks and exhibits
+- Portfolio presentations
+
+### If stronger privacy is required
+
+For production systems handling sensitive data, consider:
+- Adding server-issued, signed tokens with an expiration time.
+- Implementing optional user authentication and session management.
+- Encrypting sensitive fields in Firestore.
+- Adding audit logging and access controls.
 
 ---
 

@@ -36,7 +36,13 @@
                 {% for record in records %}
                 <article class="list-group-item history-item py-3">
                     <div class="d-flex justify-content-between align-items-start gap-3 mb-2">
-                        <time class="small text-muted">{{ record.timestamp }}</time>
+                        <time
+                            class="small text-muted history-timestamp"
+                            datetime="{{ record.timestamp_utc }}"
+                            data-utc="{{ record.timestamp_utc }}"
+                        >
+                            {{ record.timestamp }}
+                        </time>
                         <span class="badge rounded-pill text-bg-primary history-emotion-badge">
                             {{ record.emotion }}
                         </span>
@@ -71,5 +77,49 @@
         </section>
         {% endif %}
     </main>
+    <script src="{{ url_for('static', filename='js/device_id.js') }}"></script>
+    <script>
+        (function () {
+            function formatLocalTimestamp(utcValue) {
+                if (!utcValue) {
+                    return "";
+                }
+
+                // Normalize common UTC suffixes to 'Z' for Safari compatibility
+                var normalized = String(utcValue).replace(/\+00:00$/, "Z");
+                // If the value doesn't end with a timezone designator, append Z
+                if (!/[Zz]$/.test(normalized) && !/[+-]\d{2}:\d{2}$/.test(normalized)) {
+                    normalized = normalized + "Z";
+                }
+
+                var date = new Date(normalized);
+                if (Number.isNaN(date.getTime())) {
+                    return utcValue;
+                }
+
+                return date.toLocaleString(navigator.language || "es-ES", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: false,
+                });
+            }
+
+            function localizeTimestamps() {
+                var elements = document.querySelectorAll(".history-timestamp[data-utc]");
+                elements.forEach(function (element) {
+                    var utcValue = element.getAttribute("data-utc");
+                    var localString = formatLocalTimestamp(utcValue);
+                    if (localString) {
+                        element.textContent = localString;
+                    }
+                });
+            }
+
+            document.addEventListener("DOMContentLoaded", localizeTimestamps);
+        })();
+    </script>
 </body>
 </html>
