@@ -4,6 +4,6 @@ opencv-python-headless>=4.8.0
 tensorflow>=2.15.0
 tf-keras
 gunicorn
-google-cloud-firestore>=3.15.0
+google-cloud-firestore
 python-json-logger>=2.0.0
 google-cloud-logging>=3.5.0
