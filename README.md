@@ -465,19 +465,19 @@ Mobile browsers require HTTPS for camera access. Use ngrok to expose the local s
 
 ### Main Page — Camera and Analysis
 
-![Main page — live camera preview and capture button](docs/screenshots/main-page.png)
+![Main page — live camera preview and capture button](screenshots/main-page.jpg)
 
 ### Emotion Result
 
-![Detected emotion with confidence score](docs/screenshots/emotion-result.png)
+![Detected emotion with confidence score](screenshots/emotion-result.jpg)
 
 ### History Page
 
-![Chronological list of past emotion analyses](docs/screenshots/history-page.png)
+![Chronological list of past emotion analyses](screenshots/history-page.jpg)
 
 ### Statistics Page
 
-![Emotion distribution with counts and percentages](docs/screenshots/stats-page.png)
+![Emotion distribution with counts and percentages](screenshots/stats-page.jpg)
 
 ---
 
