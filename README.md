@@ -1,86 +1,86 @@
 # EmotionCam Web
 
-**Real-time facial emotion recognition powered by DeepFace and Flask**
+**Reconocimiento facial de emociones en tiempo real impulsado por DeepFace y Flask**
 
-EmotionCam Web is a mobile-first web application that detects human emotions from live camera input. Users capture a photo with a single tap, and the system automatically analyzes facial expressions using deep learning, displays the result with a confidence score, and persists each analysis for later review.
-
----
-
-## Overview
-
-Understanding human emotions from facial expressions is a fundamental problem in artificial intelligence, with applications in human–computer interaction, accessibility, education, and user experience research. Manual interpretation of emotions is subjective and does not scale; automated systems can provide consistent, data-driven insights in real time.
-
-EmotionCam Web addresses this challenge by delivering a practical, browser-based emotion recognition tool. The application combines computer vision, deep learning, and a lightweight web stack to let users interact with an AI model through their device camera—without installing native software. The interface is designed for mobile devices and is fully localized in Spanish, making it suitable for demonstrations, academic evaluation, and portfolio presentation.
+EmotionCam Web es una aplicación web orientada a dispositivos móviles que detecta emociones humanas a partir de la cámara en vivo. Los usuarios capturan una foto con un solo toque, y el sistema analiza automáticamente las expresiones faciales mediante aprendizaje profundo, muestra el resultado con una puntuación de confianza y almacena cada análisis para revisiones posteriores.
 
 ---
 
-## Features
+## Descripción General
 
-- **Live camera preview** with front-facing camera support
-- **One-tap capture and analysis** — capture, upload, and analyze in a single action
-- **DeepFace emotion recognition** with dominant emotion detection
-- **Confidence score visualization** with progress bar and contextual hints
-- **Spanish-language interface** (UI, errors, and result labels)
-- **Emotion history page** — chronological log of past analyses
-- **Statistics page** — emotion distribution with counts and percentages
-- **Google Cloud Firestore persistence** for analysis records
-- **Device-specific history and statistics** via browser-based device identifiers
-- **Mobile-first responsive design** optimized for iPhone Safari
-- **Secure file upload handling** with validation and size limits
-- **Graceful error handling** for missing faces, camera issues, and network failures
+Comprender las emociones humanas a partir de expresiones faciales es un problema fundamental en la inteligencia artificial, con aplicaciones en la interacción humano-computadora, accesibilidad, educación e investigación de experiencia de usuario. La interpretación manual de emociones es subjetiva y no escala; los sistemas automatizados pueden ofrecer información consistente y basada en datos en tiempo real.
+
+EmotionCam Web aborda este desafío proporcionando una herramienta práctica de reconocimiento de emociones basada en el navegador. La aplicación combina visión por computadora, aprendizaje profundo y una pila web ligera para que los usuarios interactúen con un modelo de IA a través de la cámara de su dispositivo, sin necesidad de instalar software nativo. La interfaz está diseñada para dispositivos móviles y está completamente localizada en español, lo que la hace adecuada para demostraciones, evaluaciones académicas y presentaciones de portafolio.
 
 ---
 
-## Artificial Intelligence Component
+## Características
+
+- **Vista previa de cámara en vivo** con soporte para cámara frontal
+- **Captura y análisis con un solo toque** — captura, carga y análisis en una sola acción
+- **Reconocimiento de emociones con DeepFace** con detección de la emoción dominante
+- **Visualización de puntuación de confianza** con barra de progreso e indicaciones contextuales
+- **Interfaz en español** (UI, errores y etiquetas de resultados)
+- **Página de historial de emociones** — registro cronológico de análisis anteriores
+- **Página de estadísticas** — distribución de emociones con conteos y porcentajes
+- **Persistencia en Google Cloud Firestore** para los registros de análisis
+- **Historial y estadísticas por dispositivo** mediante identificadores de dispositivo basados en el navegador
+- **Diseño responsivo mobile-first** optimizado para Safari en iPhone
+- **Manejo seguro de cargas de archivos** con validación y límites de tamaño
+- **Manejo de errores robusto** para caras no detectadas, problemas de cámara y fallos de red
+
+---
+
+## Componente de Inteligencia Artificial
 
 ### DeepFace
 
-[DeepFace](https://github.com/serengil/deepface) is an open-source Python framework for facial analysis. It wraps pre-trained deep learning models (built on TensorFlow/Keras) that perform face detection and attribute inference. In this project, DeepFace is used exclusively for **emotion recognition**.
+[DeepFace](https://github.com/serengil/deepface) es un framework de Python de código abierto para análisis facial. Envuelve modelos de aprendizaje profundo preentrenados (construidos sobre TensorFlow/Keras) que realizan detección de rostros e inferencia de atributos. En este proyecto, DeepFace se utiliza exclusivamente para el **reconocimiento de emociones**.
 
-### Emotion Recognition
+### Reconocimiento de Emociones
 
-When an image is submitted for analysis, DeepFace detects faces in the photograph and evaluates each face against seven emotion categories:
+Cuando se envía una imagen para análisis, DeepFace detecta rostros en la fotografía y evalúa cada rostro contra siete categorías de emociones:
 
-| Emotion   | Label (ES)    |
-|-----------|---------------|
-| Angry     | Enojado       |
-| Disgust   | Asco          |
-| Fear      | Miedo         |
-| Happy     | Feliz         |
-| Sad       | Triste        |
-| Surprise  | Sorprendido   |
-| Neutral   | Neutral       |
+| Emoción (EN) | Etiqueta (ES) |
+|--------------|---------------|
+| Angry        | Enojado       |
+| Disgust      | Asco          |
+| Fear         | Miedo         |
+| Happy        | Feliz         |
+| Sad          | Triste        |
+| Surprise     | Sorprendido   |
+| Neutral      | Neutral       |
 
-The model returns a probability distribution across all seven classes for each detected face.
+El modelo devuelve una distribución de probabilidad entre las siete clases para cada rostro detectado.
 
-### Dominant Emotion Detection
+### Detección de Emoción Dominante
 
-The **dominant emotion** is the class with the highest predicted probability in DeepFace's output. The application extracts this value via `dominant_emotion` and normalizes it to a lowercase label before returning it to the client and storing it in the database.
+La **emoción dominante** es la clase con la mayor probabilidad predicha en la salida de DeepFace. La aplicación extrae este valor mediante `dominant_emotion` y lo normaliza a una etiqueta en minúsculas antes de devolverlo al cliente y almacenarlo en la base de datos.
 
-If no face is detected in the image (`enforce_detection=True`), the service raises a dedicated error and the user receives a clear message to adjust lighting or camera angle.
+Si no se detecta ningún rostro en la imagen (`enforce_detection=True`), el servicio lanza un error dedicado y el usuario recibe un mensaje claro para ajustar la iluminación o el ángulo de la cámara.
 
-### Confidence Score Generation
+### Generación de Puntuación de Confianza
 
-The confidence score corresponds to the model's predicted probability for the dominant emotion class, expressed as an integer percentage (0–100). The value is read directly from DeepFace's emotion score dictionary and clamped to a maximum of 100 to prevent display anomalies from floating-point rounding.
+La puntuación de confianza corresponde a la probabilidad predicha por el modelo para la clase de emoción dominante, expresada como un porcentaje entero (0–100). El valor se lee directamente del diccionario de puntuaciones de emociones de DeepFace y se limita a un máximo de 100 para evitar anomalías de visualización por redondeo de punto flotante.
 
 ---
 
-## System Architecture
+## Arquitectura del Sistema
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     Browser (Client)                        │
+│                     Navegador (Cliente)                      │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
 │  │ Bootstrap UI │  │  camera.js   │  │ MediaDevices API │  │
 │  └──────┬───────┘  └──────┬───────┘  └────────┬─────────┘  │
 └─────────┼─────────────────┼───────────────────┼──────────────┘
           │                 │                   │
-          │    HTTP (HTML)    │   REST (JSON)     │  getUserMedia
+          │    HTTP (HTML)   │   REST (JSON)     │  getUserMedia
           ▼                 ▼                   ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                     Flask Backend (app.py)                  │
+│                  Backend Flask (app.py)                      │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────────┐  │
-│  │  Routes  │  │  Upload  │  │ Analyze  │  │  Templates │  │
+│  │  Rutas   │  │  Carga   │  │ Analizar │  │ Plantillas │  │
 │  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────────────┘  │
 │       │             │             │                         │
 │       │             ▼             ▼                         │
@@ -96,154 +96,154 @@ The confidence score corresponds to the model's predicted probability for the do
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Flask Backend
+### Backend Flask
 
-The backend is built with **Flask 3.x** and exposes both server-rendered pages and JSON API endpoints. It handles image uploads, orchestrates emotion analysis, persists results, and serves the history and statistics views.
+El backend está construido con **Flask 3.x** y expone tanto páginas renderizadas en el servidor como endpoints de API JSON. Gestiona las cargas de imágenes, coordina el análisis de emociones, persiste los resultados y sirve las vistas de historial y estadísticas.
 
-| Route      | Method | Description                          |
-|------------|--------|--------------------------------------|
-| `/`        | GET    | Main camera and analysis page        |
-| `/history` | GET    | Emotion analysis history             |
-| `/stats`   | GET    | Emotion distribution statistics      |
-| `/upload`  | POST   | Receive and store captured image     |
-| `/analyze` | POST   | Run DeepFace analysis on uploaded image |
+| Ruta       | Método | Descripción                                    |
+|------------|--------|------------------------------------------------|
+| `/`        | GET    | Página principal de cámara y análisis          |
+| `/history` | GET    | Historial de análisis de emociones             |
+| `/stats`   | GET    | Estadísticas de distribución de emociones      |
+| `/upload`  | POST   | Recibir y almacenar imagen capturada           |
+| `/analyze` | POST   | Ejecutar análisis DeepFace sobre imagen cargada|
 
-### Bootstrap Frontend
+### Frontend con Bootstrap
 
-The user interface uses **Bootstrap 5.3** (CDN) with custom CSS for a clean, mobile-first layout. The main page (`index.html`) provides the camera preview, capture button, and result panel. History and statistics pages share a consistent navigation bar and container width (max 480 px).
+La interfaz de usuario utiliza **Bootstrap 5.3** (CDN) con CSS personalizado para un diseño limpio y mobile-first. La página principal (`index.html`) proporciona la vista previa de la cámara, el botón de captura y el panel de resultados. Las páginas de historial y estadísticas comparten una barra de navegación consistente y un ancho de contenedor máximo de 480 px.
 
-Client-side logic in `camera.js` manages camera access, frame capture via HTML5 Canvas, asynchronous upload/analysis requests, and dynamic result rendering.
+La lógica del lado del cliente en `camera.js` gestiona el acceso a la cámara, la captura de fotogramas mediante HTML5 Canvas, las solicitudes asíncronas de carga/análisis y la representación dinámica de resultados.
 
-### Firestore Database
+### Base de Datos Firestore
 
-Analysis results are stored in **Google Cloud Firestore** in a collection named `emotions`. Each document contains the following fields:
+Los resultados del análisis se almacenan en **Google Cloud Firestore** en una colección llamada `emotions`. Cada documento contiene los siguientes campos:
 
-| Field       | Type       | Description                      |
-|-------------|------------|----------------------------------|
-| `device_id` | string     | Anonymous device UUID            |
-| `timestamp` | timestamp  | UTC timestamp of analysis        |
-| `emotion`   | string     | Dominant emotion label (lowercase)|
-| `confidence`| number     | Confidence score (0–100)         |
+| Campo       | Tipo       | Descripción                            |
+|-------------|------------|----------------------------------------|
+| `device_id` | string     | UUID anónimo del dispositivo           |
+| `timestamp` | timestamp  | Marca de tiempo UTC del análisis       |
+| `emotion`   | string     | Etiqueta de emoción dominante (minúsc.)|
+| `confidence`| number     | Puntuación de confianza (0–100)        |
 
-### Camera Integration
+### Integración de Cámara
 
-The browser **MediaDevices API** (`getUserMedia`) accesses the device camera with:
+La **API MediaDevices** del navegador (`getUserMedia`) accede a la cámara del dispositivo con:
 
-- Front-facing mode (`facingMode: "user"`)
-- `playsinline` and `muted` attributes for iOS Safari compatibility
-- HTTPS requirement enforced via secure context check (satisfied by ngrok or localhost)
+- Modo de cámara frontal (`facingMode: "user"`)
+- Atributos `playsinline` y `muted` para compatibilidad con iOS Safari
+- Requisito de HTTPS aplicado mediante verificación de contexto seguro (satisfecho por ngrok o localhost)
 
-Captured frames are drawn to a hidden canvas and exported as JPEG blobs for upload.
+Los fotogramas capturados se dibujan en un canvas oculto y se exportan como blobs JPEG para su carga.
 
-### DeepFace Service
+### Servicio DeepFace
 
-The `services/emotion_service.py` module encapsulates all AI logic. It accepts a file path, invokes `DeepFace.analyze()` with `actions=["emotion"]`, extracts the dominant emotion and confidence, and returns a structured JSON-compatible dictionary. Error handling distinguishes file-not-found, no-face-detected, and general analysis failures.
+El módulo `services/emotion_service.py` encapsula toda la lógica de IA. Acepta una ruta de archivo, invoca `DeepFace.analyze()` con `actions=["emotion"]`, extrae la emoción dominante y la confianza, y devuelve un diccionario estructurado compatible con JSON. El manejo de errores distingue entre archivo no encontrado, rostro no detectado y fallos generales de análisis.
 
 ---
 
-## Application Workflow
+## Flujo de la Aplicación
 
 ```
-User
+Usuario
   │
   ▼
-Opens application in mobile browser (HTTPS)
+Abre la aplicación en el navegador móvil (HTTPS)
   │
   ▼
-Camera ──► Live preview starts via getUserMedia
+Cámara ──► La vista previa en vivo inicia vía getUserMedia
   │
   ▼
-Capture ──► User taps "Capturar"
-  │           Frame drawn to hidden canvas
+Captura ──► El usuario toca "Capturar"
+  │           El fotograma se dibuja en un canvas oculto
   │
   ▼
-Upload ──► JPEG sent to POST /upload
-  │           Saved to uploads/ with UUID filename
+Carga ──► JPEG enviado a POST /upload
+  │          Guardado en uploads/ con nombre de archivo UUID
   │
   ▼
-DeepFace Analysis ──► POST /analyze with filename
-  │                     Face detection + emotion inference
+Análisis DeepFace ──► POST /analyze con nombre de archivo
+  │                    Detección de rostro + inferencia de emoción
   │
   ▼
-Result Display ──► Emotion label, icon, summary,
-  │                 confidence bar shown in Spanish
+Visualización de Resultado ──► Etiqueta de emoción, ícono, resumen,
+  │                            barra de confianza mostrada en español
   │
   ▼
-Database Storage ──► Record inserted into Firestore
-                      (device_id, emotion, confidence, timestamp)
+Almacenamiento en Base de Datos ──► Registro insertado en Firestore
+                                    (device_id, emotion, confidence, timestamp)
 ```
 
 ---
 
-## Technologies Used
+## Tecnologías Utilizadas
 
-| Category            | Technology                        |
-|---------------------|-----------------------------------|
-| Backend framework   | Flask 3.x                         |
-| AI / Deep learning  | DeepFace, TensorFlow 2.x          |
-| Computer vision     | OpenCV (headless)                 |
-| Database            | Google Cloud Firestore            |
-| Frontend framework  | Bootstrap 5.3                     |
-| Client scripting    | Vanilla JavaScript (ES5+)         |
-| Camera API          | MediaDevices / getUserMedia       |
-| Image processing    | HTML5 Canvas                      |
-| Language            | Python 3.12                       |
-| Tunneling (mobile)  | ngrok                             |
+| Categoría            | Tecnología                        |
+|----------------------|-----------------------------------|
+| Framework backend    | Flask 3.x                         |
+| IA / Aprendizaje prof.| DeepFace, TensorFlow 2.x         |
+| Visión por computadora| OpenCV (headless)                |
+| Base de datos        | Google Cloud Firestore            |
+| Framework frontend   | Bootstrap 5.3                     |
+| Scripts del cliente  | JavaScript Vanilla (ES5+)         |
+| API de cámara        | MediaDevices / getUserMedia       |
+| Procesamiento de imagen| HTML5 Canvas                    |
+| Lenguaje             | Python 3.12                       |
+| Túnel (móvil)        | ngrok                             |
 
 ---
 
-## Project Structure
+## Estructura del Proyecto
 
 ```
 Emotion Detector/
-├── app.py                  # Flask application and route definitions
-├── requirements.txt        # Python dependencies
-├── README.md               # Project documentation
+├── app.py                  # Aplicación Flask y definición de rutas
+├── requirements.txt        # Dependencias de Python
+├── README.md               # Documentación del proyecto
 │
 ├── database/
-│   ├── db.py               # Persistence compatibility layer
-│   └── firestore_db.py     # Firestore persistence module
+│   ├── db.py               # Capa de compatibilidad de persistencia
+│   └── firestore_db.py     # Módulo de persistencia en Firestore
 │
 ├── services/
-│   └── emotion_service.py  # DeepFace emotion analysis service
+│   └── emotion_service.py  # Servicio de análisis de emociones con DeepFace
 │
 ├── templates/
-│   ├── index.html          # Main camera and analysis page
-│   ├── history.html        # Emotion history view
-│   └── stats.html          # Emotion statistics view
+│   ├── index.html          # Página principal de cámara y análisis
+│   ├── history.html        # Vista del historial de emociones
+│   └── stats.html          # Vista de estadísticas de emociones
 │
 ├── static/
 │   ├── css/
-│   │   └── style.css       # Custom mobile-first styles
+│   │   └── style.css       # Estilos personalizados mobile-first
 │   └── js/
-│       └── camera.js       # Camera, capture, and API client logic
+│       └── camera.js       # Lógica de cámara, captura y cliente API
 │
-├── uploads/                # Stored captured images (gitignored)
+├── uploads/                # Imágenes capturadas almacenadas (en .gitignore)
 └── instance/
-    └── emotions.db         # Legacy SQLite file path (gitignored; not required for Firestore)
+    └── emotions.db         # Ruta heredada de SQLite (en .gitignore; no requerida para Firestore)
 ```
 
 ---
 
-## Installation
+## Instalación
 
-### Prerequisites
+### Requisitos Previos
 
-- Python 3.10 or higher
+- Python 3.10 o superior
 - pip
-- A webcam or mobile device with camera access
-- (Optional) [ngrok](https://ngrok.com/) for mobile testing over HTTPS
+- Una cámara web o dispositivo móvil con acceso a cámara
+- (Opcional) [ngrok](https://ngrok.com/) para pruebas móviles sobre HTTPS
 
-### Steps
+### Pasos
 
-1. **Clone the repository**
+1. **Clonar el repositorio**
 
    ```bash
-   git clone https://github.com/<your-username>/emotion-detector.git
+   git clone https://github.com/<tu-usuario>/emotion-detector.git
    cd emotion-detector
    ```
 
-2. **Create and activate a virtual environment**
+2. **Crear y activar un entorno virtual**
 
    ```bash
    python -m venv .venv
@@ -251,53 +251,53 @@ Emotion Detector/
    .venv\Scripts\activate           # Windows
    ```
 
-3. **Install dependencies**
+3. **Instalar dependencias**
 
    ```bash
    pip install -r requirements.txt
    ```
 
-   > **Note:** The first run will download DeepFace model weights (~100 MB). Ensure a stable internet connection.
+   > **Nota:** La primera ejecución descargará los pesos del modelo DeepFace (~100 MB). Asegúrate de tener una conexión a internet estable.
 
 ---
 
-## Running the Project
+## Ejecutar el Proyecto
 
-Start the Flask development server:
+Inicia el servidor de desarrollo Flask:
 
 ```bash
 python app.py
 ```
 
-The application will be available at:
+La aplicación estará disponible en:
 
 ```
 http://localhost:5000
 ```
 
-## Environment Variables
+## Variables de Entorno
 
-The application expects the following environment variables when using Firestore:
+La aplicación requiere las siguientes variables de entorno cuando se usa Firestore:
 
-- `GOOGLE_APPLICATION_CREDENTIALS` (recommended for local testing): path to a service account JSON key file.
-- `FIRESTORE_PROJECT_ID` or `GOOGLE_CLOUD_PROJECT`: the GCP project id where Firestore is enabled.
+- `GOOGLE_APPLICATION_CREDENTIALS` (recomendado para pruebas locales): ruta a un archivo JSON de clave de cuenta de servicio.
+- `FIRESTORE_PROJECT_ID` o `GOOGLE_CLOUD_PROJECT`: el ID del proyecto GCP donde Firestore está habilitado.
 
-In production (Cloud Run) prefer Workload Identity / Cloud Run service accounts instead of JSON keys.
+En producción (Cloud Run), se prefiere Workload Identity / cuentas de servicio de Cloud Run en lugar de claves JSON.
 
-## Cloud Run Deployment
+## Despliegue en Cloud Run
 
-Deploy the application to Google Cloud Run using Workload Identity for secure, key-free authentication:
+Despliega la aplicación en Google Cloud Run usando Workload Identity para una autenticación segura sin claves:
 
-### Step 1: Create a service account
+### Paso 1: Crear una cuenta de servicio
 
 ```bash
 gcloud iam service-accounts create emotioncam-sa \
   --display-name "EmotionCam Service Account"
 ```
 
-Replace `emotioncam-sa` with your preferred name.
+Reemplaza `emotioncam-sa` con tu nombre preferido.
 
-### Step 2: Grant Firestore permissions
+### Paso 2: Otorgar permisos de Firestore
 
 ```bash
 gcloud projects add-iam-policy-binding PROJECT_ID \
@@ -305,17 +305,17 @@ gcloud projects add-iam-policy-binding PROJECT_ID \
   --role="roles/datastore.user"
 ```
 
-Replace `PROJECT_ID` with your Google Cloud project ID.
+Reemplaza `PROJECT_ID` con tu ID de proyecto de Google Cloud.
 
-### Step 3: Build and push the Docker image
+### Paso 3: Construir y subir la imagen Docker
 
 ```bash
 gcloud builds submit --tag IMAGE_URL
 ```
 
-Replace `IMAGE_URL` with the full image path, e.g., `gcr.io/PROJECT_ID/emotioncam-app`.
+Reemplaza `IMAGE_URL` con la ruta completa de la imagen, p. ej., `gcr.io/PROJECT_ID/emotioncam-app`.
 
-### Step 4: Deploy to Cloud Run
+### Paso 4: Desplegar en Cloud Run
 
 ```bash
 gcloud run deploy emotioncam-app \
@@ -329,11 +329,11 @@ gcloud run deploy emotioncam-app \
   --allow-unauthenticated
 ```
 
-Replace `IMAGE_URL` and `PROJECT_ID` with your values.
+Reemplaza `IMAGE_URL` y `PROJECT_ID` con tus valores.
 
-### Cold-start note
+### Nota sobre el arranque en frío
 
-The first request after a Cloud Run instance cold-starts may take 20–40 seconds while TensorFlow loads the DeepFace models. To avoid cold starts in demo scenarios, optionally set `--min-instances 1` at the cost of continuous billing:
+La primera solicitud después de que una instancia de Cloud Run arranca en frío puede tardar entre 20 y 40 segundos mientras TensorFlow carga los modelos de DeepFace. Para evitar arranques en frío en escenarios de demostración, opcionalmente establece `--min-instances 1` a costa de facturación continua:
 
 ```bash
 gcloud run deploy emotioncam-app \
@@ -349,170 +349,170 @@ gcloud run deploy emotioncam-app \
 ```
 
 
-## Google Cloud Firestore Setup
+## Configuración de Google Cloud Firestore
 
-1. Enable the **Cloud Firestore** API in your Google Cloud project.
-2. Create a service account with the following IAM roles:
-   - `Cloud Datastore User` or `Cloud Firestore User`
-   - `Cloud Firestore Viewer` (for read-only access if needed)
-   - `Cloud Logging > Logs Writer` (optional, for app logging into GCP)
-3. Generate and download a JSON key file for the service account.
-4. Set the environment variable:
+1. Habilita la API de **Cloud Firestore** en tu proyecto de Google Cloud.
+2. Crea una cuenta de servicio con los siguientes roles de IAM:
+   - `Cloud Datastore User` o `Cloud Firestore User`
+   - `Cloud Firestore Viewer` (para acceso de solo lectura si es necesario)
+   - `Cloud Logging > Logs Writer` (opcional, para registro de la app en GCP)
+3. Genera y descarga un archivo de clave JSON para la cuenta de servicio.
+4. Establece las variables de entorno:
 
    ```bash
-   export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your-key.json"
-   export FIRESTORE_PROJECT_ID="your-gcp-project-id"
+   export GOOGLE_APPLICATION_CREDENTIALS="/ruta/a/tu-clave.json"
+   export FIRESTORE_PROJECT_ID="tu-id-proyecto-gcp"
    ```
 
-   If you use Application Default Credentials or Workload Identity, only `FIRESTORE_PROJECT_ID` may be required.
+   Si usas Application Default Credentials o Workload Identity, puede que solo se requiera `FIRESTORE_PROJECT_ID`.
 
-5. Confirm credentials are available before starting the app:
+5. Confirma que las credenciales están disponibles antes de iniciar la app:
 
    ```bash
    python -c "from google.auth import default; creds, project = default(); print(project)"
    ```
 
-6. Launch the app:
+6. Inicia la app:
 
    ```bash
    python app.py
    ```
 
-Open this URL in a desktop browser for local testing. Camera access requires a secure context (HTTPS or localhost).
+Abre esta URL en un navegador de escritorio para pruebas locales. El acceso a la cámara requiere un contexto seguro (HTTPS o localhost).
 
 ---
 
-## Security & Privacy
+## Seguridad y Privacidad
 
-### Device Isolation Model
+### Modelo de Aislamiento por Dispositivo
 
-The application uses an **anonymous per-device isolation model** for history and statistics:
+La aplicación utiliza un **modelo de aislamiento anónimo por dispositivo** para el historial y las estadísticas:
 
-1. On first visit, the browser generates a unique UUID using `crypto.randomUUID()` and stores it in `localStorage` under the key `emotion_device_id`.
-2. This UUID is sent with every emotion analysis request and stored in Firestore as `device_id`.
-3. History and statistics pages are filtered server-side to show only records matching the current device's UUID.
+1. En la primera visita, el navegador genera un UUID único usando `crypto.randomUUID()` y lo almacena en `localStorage` bajo la clave `emotion_device_id`.
+2. Este UUID se envía con cada solicitud de análisis de emociones y se almacena en Firestore como `device_id`.
+3. Las páginas de historial y estadísticas se filtran en el servidor para mostrar solo los registros que coincidan con el UUID del dispositivo actual.
 
-### Limitations
+### Limitaciones
 
-- **Not cryptographically signed**: The device UUID is not signed, encrypted, or validated by the server. Any client can set or guess a different `device_id` value and view another device's history if they know or guess the UUID.
-- **Not suitable for sensitive data**: This model is appropriate for demos, academic projects, and public displays, but not for personally sensitive or regulated data.
-- **No personal data collected**: The application collects only emotion analysis results, timestamps, and device UUIDs; it does not collect IP addresses, browser fingerprints, or other personally identifiable information.
+- **No firmado criptográficamente**: El UUID del dispositivo no está firmado, cifrado ni validado por el servidor. Cualquier cliente puede establecer o adivinar un valor diferente de `device_id` y ver el historial de otro dispositivo si conoce o adivina el UUID.
+- **No apto para datos sensibles**: Este modelo es apropiado para demos, proyectos académicos y exhibiciones públicas, pero no para datos personalmente sensibles o regulados.
+- **No se recopilan datos personales**: La aplicación recopila únicamente resultados de análisis de emociones, marcas de tiempo y UUIDs de dispositivos; no recopila direcciones IP, huellas digitales del navegador u otra información de identificación personal.
 
-### Recommended use cases
+### Casos de Uso Recomendados
 
-- Educational demonstrations
-- Academic projects
-- Public kiosks and exhibits
-- Portfolio presentations
+- Demostraciones educativas
+- Proyectos académicos
+- Quioscos y exhibiciones públicas
+- Presentaciones de portafolio
 
-### If stronger privacy is required
+### Si se requiere mayor privacidad
 
-For production systems handling sensitive data, consider:
-- Adding server-issued, signed tokens with an expiration time.
-- Implementing optional user authentication and session management.
-- Encrypting sensitive fields in Firestore.
-- Adding audit logging and access controls.
+Para sistemas en producción que manejen datos sensibles, considera:
+- Agregar tokens firmados emitidos por el servidor con tiempo de expiración.
+- Implementar autenticación de usuario opcional y gestión de sesiones.
+- Cifrar campos sensibles en Firestore.
+- Agregar auditoría de registros y controles de acceso.
 
 ---
 
-## Mobile Testing with ngrok
+## Pruebas Móviles con ngrok
 
-Mobile browsers require HTTPS for camera access. Use ngrok to expose the local server securely:
+Los navegadores móviles requieren HTTPS para el acceso a la cámara. Usa ngrok para exponer el servidor local de forma segura:
 
-1. **Start the Flask server**
+1. **Inicia el servidor Flask**
 
    ```bash
    python app.py
    ```
 
-2. **Start ngrok in a separate terminal**
+2. **Inicia ngrok en una terminal separada**
 
    ```bash
    ngrok http 5000
    ```
 
-3. **Open the HTTPS URL** provided by ngrok (e.g., `https://abc123.ngrok-free.app`) on your iPhone or Android device using Safari or Chrome.
+3. **Abre la URL HTTPS** proporcionada por ngrok (p. ej., `https://abc123.ngrok-free.app`) en tu iPhone o dispositivo Android usando Safari o Chrome.
 
-4. **Grant camera permission** when prompted.
+4. **Otorga permiso de cámara** cuando se te solicite.
 
-5. **Pre-warm the model** by performing one test capture before a live demonstration. The first analysis may take 15–30 seconds while DeepFace loads its models.
-
----
-
-## Usage Instructions
-
-1. Open the application in a supported mobile browser (HTTPS required).
-2. Allow camera access when the browser requests permission.
-3. Position your face within the live camera preview.
-4. Tap **Capturar** to capture and analyze your expression.
-5. Wait for the analysis to complete (a loading indicator is shown).
-6. Review the detected **emotion** and **confidence score**.
-7. Navigate to **Historial** to view past analyses.
-8. Navigate to **Estadísticas** to see emotion distribution across all sessions.
-
-### Tips for Best Results
-
-- Face the camera directly with adequate lighting.
-- Avoid extreme angles or partial face occlusion.
-- Wait for the camera preview to fully load before capturing.
-- If no face is detected, adjust position and try again.
+5. **Precalienta el modelo** realizando una captura de prueba antes de una demostración en vivo. El primer análisis puede tardar entre 15 y 30 segundos mientras DeepFace carga sus modelos.
 
 ---
 
-## Screenshots
+## Instrucciones de Uso
 
-> Replace the placeholders below with actual screenshots before publication.
+1. Abre la aplicación en un navegador móvil compatible (se requiere HTTPS).
+2. Permite el acceso a la cámara cuando el navegador lo solicite.
+3. Posiciona tu rostro dentro de la vista previa de la cámara en vivo.
+4. Toca **Capturar** para capturar y analizar tu expresión.
+5. Espera a que se complete el análisis (se muestra un indicador de carga).
+6. Revisa la **emoción** detectada y la **puntuación de confianza**.
+7. Navega a **Historial** para ver análisis anteriores.
+8. Navega a **Estadísticas** para ver la distribución de emociones en todas las sesiones.
 
-### Main Page — Camera and Analysis
+### Consejos para Mejores Resultados
 
-![Main page — live camera preview and capture button](screenshots/main-page.jpg)
-
-### Emotion Result
-
-![Detected emotion with confidence score](screenshots/emotion-result.jpg)
-
-### History Page
-
-![Chronological list of past emotion analyses](screenshots/history-page.jpg)
-
-### Statistics Page
-
-![Emotion distribution with counts and percentages](screenshots/stats-page.jpg)
+- Mira directamente a la cámara con iluminación adecuada.
+- Evita ángulos extremos u oclusión parcial del rostro.
+- Espera a que la vista previa de la cámara cargue completamente antes de capturar.
+- Si no se detecta ningún rostro, ajusta la posición y vuelve a intentarlo.
 
 ---
 
-## Future Improvements
+## Capturas de Pantalla
 
-- **Real-time video analysis** — continuous emotion detection without manual capture
-- **Multi-face support** — analyze multiple faces in a single frame
-- **User authentication** — personal history and session management
-- **Model selection** — allow switching between DeepFace backend models
-- **Deployment pipeline** — production hosting on Render, Railway, or similar
-- **Local timezone display** — convert UTC timestamps to the user's locale
-- **Image cleanup policy** — automatic removal of old uploads to manage disk usage
-- **Progress indicator** — granular feedback during long model loading
-- **Internationalization** — support for additional languages beyond Spanish
-- **Unit and integration tests** — automated test coverage for API and service layers
+> Reemplaza los marcadores de posición a continuación con capturas de pantalla reales antes de publicar.
 
----
+### Página Principal — Cámara y Análisis
 
-## Academic Context
+![Página principal — vista previa de cámara en vivo y botón de captura](screenshots/main-page.jpg)
 
-This project was developed as part of an **Artificial Intelligence course** at university level. It demonstrates the practical application of deep learning concepts—specifically computer vision and facial expression analysis—in a full-stack web application.
+### Resultado de Emoción
 
-The project covers key AI and software engineering topics including:
+![Emoción detectada con puntuación de confianza](screenshots/emotion-result.jpg)
 
-- Integration of pre-trained deep learning models via DeepFace
-- Face detection and multi-class emotion classification
-- Confidence scoring and result interpretation
-- Building a user-facing AI system with appropriate error handling
-- Persisting and visualizing AI inference results
-- Mobile-first design for real-world AI interaction
+### Página de Historial
 
-EmotionCam Web serves as both a functional prototype and a portfolio piece showcasing the ability to connect AI research tools with accessible, production-oriented software design.
+![Lista cronológica de análisis de emociones anteriores](screenshots/history-page.jpg)
+
+### Página de Estadísticas
+
+![Distribución de emociones con conteos y porcentajes](screenshots/stats-page.jpg)
 
 ---
 
-## License
+## Mejoras Futuras
 
-This project was created for academic purposes. See the repository for license details.
+- **Análisis de video en tiempo real** — detección continua de emociones sin captura manual
+- **Soporte para múltiples rostros** — analizar varios rostros en un solo fotograma
+- **Autenticación de usuarios** — historial personal y gestión de sesiones
+- **Selección de modelo** — permitir cambiar entre modelos backend de DeepFace
+- **Pipeline de despliegue** — alojamiento en producción en Render, Railway o similar
+- **Visualización de zona horaria local** — convertir marcas de tiempo UTC a la configuración regional del usuario
+- **Política de limpieza de imágenes** — eliminación automática de cargas antiguas para gestionar el uso del disco
+- **Indicador de progreso** — retroalimentación detallada durante la carga larga del modelo
+- **Internacionalización** — soporte para idiomas adicionales más allá del español
+- **Pruebas unitarias y de integración** — cobertura de pruebas automatizadas para la API y las capas de servicio
+
+---
+
+## Contexto Académico
+
+Este proyecto fue desarrollado como parte de un **curso de Inteligencia Artificial** a nivel universitario. Demuestra la aplicación práctica de conceptos de aprendizaje profundo —específicamente visión por computadora y análisis de expresiones faciales— en una aplicación web full-stack.
+
+El proyecto abarca temas clave de IA e ingeniería de software, incluyendo:
+
+- Integración de modelos de aprendizaje profundo preentrenados a través de DeepFace
+- Detección de rostros y clasificación de emociones multiclase
+- Puntuación de confianza e interpretación de resultados
+- Construcción de un sistema de IA orientado al usuario con manejo apropiado de errores
+- Persistencia y visualización de resultados de inferencia de IA
+- Diseño mobile-first para la interacción con IA en el mundo real
+
+EmotionCam Web sirve tanto como prototipo funcional como pieza de portafolio que demuestra la capacidad de conectar herramientas de investigación en IA con un diseño de software accesible y orientado a producción.
+
+---
+
+## Licencia
+
+Este proyecto fue creado con fines académicos. Consulta el repositorio para obtener detalles sobre la licencia.
